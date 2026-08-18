@@ -5,11 +5,20 @@
 // ==========================================================================
 
 // STUN ajuda os navegadores a se acharem; TURN faz relay quando a rede é fechada.
+// Open Relay funciona inclusive por TCP/443, atravessando a maioria dos firewalls.
 const PEER_CONFIG = {
   config: {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
+      {
+        urls: [
+          "turn:openrelay.metered.ca:80",
+          "turn:openrelay.metered.ca:443",
+          "turn:openrelay.metered.ca:443?transport=tcp"
+        ],
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      },
       {
         urls: [
           "turn:eu-0.turn.peerjs.com:3478",
@@ -350,12 +359,21 @@ function connectToHost() {
   // O host nos liga com o vídeo da tela.
   viewerPeer.on("call", (call) => {
     call.answer(); // apenas visualização: não enviamos nada de volta
+    watchViewerConnection(call);
     call.on("stream", (remoteStream) => {
       viewerVideoEl.srcObject = remoteStream;
-      viewerStatusEl.textContent = "🔴 Ao vivo";
+      viewerStatusEl.textContent = "Conectado! Carregando vídeo…";
       joinRowEl.classList.add("hidden");
       btnFullscreen.classList.remove("hidden");
       setupViewerAudio(remoteStream);
+      // Só marca "Ao vivo" quando os frames realmente começam a tocar.
+      viewerVideoEl.addEventListener(
+        "playing",
+        () => {
+          viewerStatusEl.textContent = "🔴 Ao vivo";
+        },
+        { once: true }
+      );
     });
     call.on("close", () => {
       viewerStatusEl.textContent = "A transmissão foi encerrada.";
@@ -372,6 +390,32 @@ function connectToHost() {
       viewerStatusEl.textContent = "⚠️ Erro: " + err.type;
     }
   });
+}
+
+// Avisa quando a mídia não flui (ICE falhou = provável bloqueio de rede/firewall).
+function watchViewerConnection(call) {
+  const setup = () => {
+    const pc = call.peerConnection;
+    if (!pc) {
+      setTimeout(setup, 300);
+      return;
+    }
+    pc.addEventListener("iceconnectionstatechange", () => {
+      if (pc.iceConnectionState === "failed") {
+        viewerStatusEl.textContent =
+          "❌ A conexão de vídeo falhou (provável bloqueio de rede/firewall). Tente outra rede.";
+      }
+    });
+  };
+  setup();
+
+  // Se em 15s o vídeo ainda não começou, provavelmente a mídia está bloqueada.
+  setTimeout(() => {
+    if (viewerVideoEl.srcObject && viewerVideoEl.readyState < 2) {
+      viewerStatusEl.textContent =
+        "⏳ Conectado, mas o vídeo não chegou — pode ser bloqueio de rede. Tente outra rede/Wi-Fi.";
+    }
+  }, 15000);
 }
 
 // Configura o áudio para quem assiste: começa mudo (garante o autoplay) e mostra
