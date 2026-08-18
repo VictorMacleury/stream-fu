@@ -287,6 +287,49 @@ video {
   font-size: 0.85rem;
 }
 
+.log-panel {
+  max-width: 780px;
+  margin: 16px auto 0;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.log-panel summary {
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
+}
+
+.log-actions {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.small {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+#logOutput {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Consolas", monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 8px;
+}
+
 footer {
   color: var(--muted);
   font-size: 0.85rem;

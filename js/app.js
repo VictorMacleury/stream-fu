@@ -7,6 +7,7 @@
 // STUN ajuda os navegadores a se acharem; TURN faz relay quando a rede é fechada.
 // Open Relay funciona inclusive por TCP/443, atravessando a maioria dos firewalls.
 const PEER_CONFIG = {
+  debug: 2,
   config: {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -55,6 +56,75 @@ const soundControls = document.getElementById("soundControls");
 const btnToggleSound = document.getElementById("btnToggleSound");
 const volumeSlider = document.getElementById("volumeSlider");
 const audioHintEl = document.getElementById("audioHint");
+const logOutput = document.getElementById("logOutput");
+const btnCopyLog = document.getElementById("btnCopyLog");
+const btnClearLog = document.getElementById("btnClearLog");
+
+// Log simples: mostra no painel da tela e no console (fácil de screenshotar).
+function log(...args) {
+  const msg = args
+    .map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a)))
+    .join(" ");
+  const line = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  console.log(line);
+  if (logOutput) {
+    logOutput.textContent += line + "\n";
+    logOutput.scrollTop = logOutput.scrollHeight;
+  }
+}
+
+// Registra os eventos ICE/mídia de uma conexão para diagnóstico.
+function instrumentPeerConnection(pc, role) {
+  if (!pc || pc.__instrumented) return;
+  pc.__instrumented = true;
+  log(role, "PC criado. iceGathering:", pc.iceGatheringState);
+
+  pc.addEventListener("icegatheringstatechange", () =>
+    log(role, "iceGathering:", pc.iceGatheringState)
+  );
+  pc.addEventListener("icecandidate", (e) => {
+    if (!e.candidate) {
+      log(role, "ICE: gathering completo (fim dos candidatos)");
+      return;
+    }
+    const cand = e.candidate.candidate || "";
+    const typ = (cand.match(/ typ (\w+)/) || [])[1] || "?";
+    log(role, "candidato:", typ, e.candidate.protocol || "");
+  });
+  pc.addEventListener("iceconnectionstatechange", () => {
+    log(role, "iceConnection:", pc.iceConnectionState);
+    if (["connected", "completed"].includes(pc.iceConnectionState)) {
+      logSelectedPair(pc, role);
+    }
+  });
+  pc.addEventListener("connectionstatechange", () =>
+    log(role, "connectionState:", pc.connectionState)
+  );
+}
+
+// Mostra qual par de candidatos foi escolhido (host/srflx/relay).
+async function logSelectedPair(pc, role) {
+  try {
+    const stats = await pc.getStats();
+    let pair = null;
+    stats.forEach((r) => {
+      if (r.type === "candidate-pair" && r.nominated && r.state === "succeeded") {
+        pair = r;
+      }
+    });
+    if (!pair) return;
+    const local = stats.get(pair.localCandidateId);
+    const remote = stats.get(pair.remoteCandidateId);
+    log(
+      role,
+      "PAR OK →",
+      "local=" + (local && local.candidateType),
+      "remoto=" + (remote && remote.candidateType)
+    );
+  } catch (e) {
+    log(role, "getStats erro:", e.message);
+  }
+}
 
 // Cada modo define como o codificador reage quando falta banda.
 const PRIORITY_SETTINGS = {
@@ -212,10 +282,12 @@ function createHostPeer(code) {
   hostPeer.on("open", (id) => {
     roomCodeEl.textContent = id;
     hostStatusEl.textContent = "✅ No ar! Envie o código para seus amigos.";
+    log("HOST", "peer aberto, código:", id);
   });
 
   // Cada espectador se anuncia por uma conexão de dados; então nós o chamamos.
   hostPeer.on("connection", (conn) => {
+    log("HOST", "espectador anunciou presença (data):", conn.peer);
     conn.on("open", () => callViewer(conn.peer));
     conn.on("close", () => {
       viewerCalls.delete(conn.peer);
@@ -234,6 +306,7 @@ function createHostPeer(code) {
 
 function callViewer(viewerId) {
   if (!localStream) return;
+  log("HOST", "ligando para o espectador:", viewerId);
   const call = hostPeer.call(viewerId, localStream);
   viewerCalls.set(viewerId, call);
   updateViewerCount();
@@ -252,6 +325,7 @@ function tuneCall(call) {
       setTimeout(setup, 300);
       return;
     }
+    instrumentPeerConnection(pc, "HOST");
     const apply = () => {
       applyPriorityToSender(pc);
       boostAudio(pc);
@@ -346,21 +420,30 @@ function connectToHost() {
   }
 
   viewerStatusEl.textContent = "Conectando…";
+  log("VIEWER", "conectando com o código:", code);
   viewerPeer = new Peer(PEER_CONFIG); // ID aleatório para o espectador
 
-  viewerPeer.on("open", () => {
+  viewerPeer.on("open", (id) => {
+    log("VIEWER", "peer aberto, meu id:", id);
     // Anuncia presença ao host para que ele nos envie o vídeo.
     const conn = viewerPeer.connect(code);
     conn.on("open", () => {
       viewerStatusEl.textContent = "Conectado! Aguardando o vídeo…";
+      log("VIEWER", "presença anunciada ao host");
     });
   });
 
   // O host nos liga com o vídeo da tela.
   viewerPeer.on("call", (call) => {
+    log("VIEWER", "recebendo chamada do host");
     call.answer(); // apenas visualização: não enviamos nada de volta
     watchViewerConnection(call);
     call.on("stream", (remoteStream) => {
+      log(
+        "VIEWER",
+        "stream recebido. tracks:",
+        remoteStream.getTracks().map((t) => t.kind).join(",")
+      );
       viewerVideoEl.srcObject = remoteStream;
       viewerStatusEl.textContent = "Conectado! Carregando vídeo…";
       joinRowEl.classList.add("hidden");
@@ -400,6 +483,7 @@ function watchViewerConnection(call) {
       setTimeout(setup, 300);
       return;
     }
+    instrumentPeerConnection(pc, "VIEWER");
     pc.addEventListener("iceconnectionstatechange", () => {
       if (pc.iceConnectionState === "failed") {
         viewerStatusEl.textContent =
@@ -497,6 +581,13 @@ volumeSlider.addEventListener("input", () => {
   updateSoundButton();
 });
 viewerVideoEl.addEventListener("volumechange", updateSoundButton);
+
+btnCopyLog.addEventListener("click", () =>
+  copyText(logOutput.textContent, btnCopyLog)
+);
+btnClearLog.addEventListener("click", () => {
+  logOutput.textContent = "";
+});
 
 // Abre direto no modo espectador quando o link tem ?code=XXXXXX
 const codeParam = new URLSearchParams(window.location.search).get("code");
