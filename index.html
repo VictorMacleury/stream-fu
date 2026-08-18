@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stream.fu</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>📺 Stream.fu</h1>
+    <p class="tagline">Chame amigos para verem sua tela ao vivo — apenas visualização.</p>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section id="home" class="card">
+      <h2>O que você quer fazer?</h2>
+      <div class="choices">
+        <button id="btnGoHost" class="primary big">🔴 Transmitir minha tela</button>
+        <button id="btnGoViewer" class="secondary big">👀 Assistir a uma transmissão</button>
+      </div>
+    </section>
+
+    <!-- HOST -->
+    <section id="host" class="card hidden">
+      <h2>Você está transmitindo</h2>
+      <p>Compartilhe este código ou link com seus amigos:</p>
+      <div class="code-row">
+        <span id="roomCode" class="code">------</span>
+        <button id="btnCopyCode" class="ghost">Copiar código</button>
+        <button id="btnCopyLink" class="ghost">Copiar link</button>
+      </div>
+      <div id="hostStatus" class="status">Preparando…</div>
+      <video id="hostPreview" autoplay muted playsinline></video>
+      <div class="host-info">
+        <span id="viewerCount" class="badge">0 pessoas assistindo</span>
+        <label class="priority" for="prioritySelect">
+          Prioridade:
+          <select id="prioritySelect">
+            <option value="framerate">Fluidez (60fps)</option>
+            <option value="balanced">Equilíbrio</option>
+            <option value="resolution">Nitidez</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="btnStopHost" class="danger">⏹ Parar transmissão</button>
+        <button id="btnBackHome1" class="ghost">Voltar</button>
+      </div>
+    </section>
+
+    <!-- VIEWER -->
+    <section id="viewer" class="card hidden">
+      <h2>Assistir transmissão</h2>
+      <div class="join-row" id="joinRow">
+        <input id="codeInput" type="text" placeholder="Digite o código (ex.: ABC123)" autocomplete="off" maxlength="6" />
+        <button id="btnConnect" class="primary">Conectar</button>
+      </div>
+      <div id="viewerStatus" class="status">Digite o código do seu amigo para começar.</div>
+      <video id="viewerVideo" autoplay playsinline controls></video>
+      <div class="actions">
+        <button id="btnFullscreen" class="ghost hidden">⛶ Tela cheia</button>
+        <button id="btnBackHome2" class="ghost">Voltar</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Funciona melhor no Chrome ou Edge no computador. É só visualização: ninguém controla nem envia nada para a sua máquina.</p>
+  </footer>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
