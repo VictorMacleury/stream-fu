@@ -59,6 +59,14 @@
       </div>
       <div id="viewerStatus" class="status">Digite o código do seu amigo para começar.</div>
       <video id="viewerVideo" autoplay playsinline controls></video>
+      <div id="soundControls" class="sound-controls hidden">
+        <button id="btnToggleSound" class="primary">🔇 Ativar som</button>
+        <label class="volume">
+          🔈
+          <input id="volumeSlider" type="range" min="0" max="100" value="80" />
+        </label>
+        <span id="audioHint" class="hint"></span>
+      </div>
       <div class="actions">
         <button id="btnFullscreen" class="ghost hidden">⛶ Tela cheia</button>
         <button id="btnBackHome2" class="ghost">Voltar</button>

@@ -32,6 +32,10 @@ const viewerVideoEl = document.getElementById("viewerVideo");
 const joinRowEl = document.getElementById("joinRow");
 const btnFullscreen = document.getElementById("btnFullscreen");
 const prioritySelect = document.getElementById("prioritySelect");
+const soundControls = document.getElementById("soundControls");
+const btnToggleSound = document.getElementById("btnToggleSound");
+const volumeSlider = document.getElementById("volumeSlider");
+const audioHintEl = document.getElementById("audioHint");
 
 // Cada modo define como o codificador reage quando falta banda.
 const PRIORITY_SETTINGS = {
@@ -289,10 +293,12 @@ function connectToHost() {
       viewerStatusEl.textContent = "🔴 Ao vivo";
       joinRowEl.classList.add("hidden");
       btnFullscreen.classList.remove("hidden");
+      setupViewerAudio(remoteStream);
     });
     call.on("close", () => {
       viewerStatusEl.textContent = "A transmissão foi encerrada.";
       viewerVideoEl.srcObject = null;
+      soundControls.classList.add("hidden");
     });
   });
 
@@ -306,6 +312,37 @@ function connectToHost() {
   });
 }
 
+// Configura o áudio para quem assiste: começa mudo (garante o autoplay) e mostra
+// o controle para ativar o som e ajustar o volume.
+function setupViewerAudio(stream) {
+  const hasAudio = stream.getAudioTracks().length > 0;
+  soundControls.classList.remove("hidden");
+  viewerVideoEl.muted = true;
+  viewerVideoEl.volume = volumeSlider.value / 100;
+  viewerVideoEl.play().catch(() => {});
+  updateSoundButton();
+  audioHintEl.textContent = hasAudio
+    ? 'Clique em "Ativar som" para ouvir.'
+    : 'Esta transmissão está sem áudio (o transmissor não marcou "compartilhar áudio").';
+}
+
+function toggleSound() {
+  viewerVideoEl.muted = !viewerVideoEl.muted;
+  if (!viewerVideoEl.muted && viewerVideoEl.volume === 0) {
+    viewerVideoEl.volume = 0.8;
+    volumeSlider.value = 80;
+  }
+  viewerVideoEl.play().catch(() => {});
+  updateSoundButton();
+}
+
+function updateSoundButton() {
+  const silent = viewerVideoEl.muted || viewerVideoEl.volume === 0;
+  btnToggleSound.textContent = silent ? "🔇 Ativar som" : "🔊 Som ligado";
+  btnToggleSound.classList.toggle("primary", silent);
+  btnToggleSound.classList.toggle("ghost", !silent);
+}
+
 function leaveViewer() {
   if (viewerPeer) {
     viewerPeer.destroy();
@@ -314,6 +351,7 @@ function leaveViewer() {
   viewerVideoEl.srcObject = null;
   joinRowEl.classList.remove("hidden");
   btnFullscreen.classList.add("hidden");
+  soundControls.classList.add("hidden");
   viewerStatusEl.textContent = "Digite o código do seu amigo para começar.";
   showView("home");
 }
@@ -344,6 +382,14 @@ codeInputEl.addEventListener("keydown", (e) => {
 });
 
 prioritySelect.addEventListener("change", (e) => setPriority(e.target.value));
+
+btnToggleSound.addEventListener("click", toggleSound);
+volumeSlider.addEventListener("input", () => {
+  viewerVideoEl.volume = volumeSlider.value / 100;
+  viewerVideoEl.muted = volumeSlider.value === "0";
+  updateSoundButton();
+});
+viewerVideoEl.addEventListener("volumechange", updateSoundButton);
 
 // Abre direto no modo espectador quando o link tem ?code=XXXXXX
 const codeParam = new URLSearchParams(window.location.search).get("code");

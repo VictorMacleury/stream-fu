@@ -230,6 +230,32 @@ video {
   border-color: var(--primary);
 }
 
+.sound-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+.sound-controls .volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.sound-controls input[type="range"] {
+  accent-color: var(--primary);
+  cursor: pointer;
+  width: 160px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 footer {
   color: var(--muted);
   font-size: 0.85rem;
