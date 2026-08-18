@@ -153,6 +153,33 @@ button:active {
   }
 }
 
+.audio-help {
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.audio-help summary {
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
+}
+
+.audio-help ul {
+  margin: 10px 0 2px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.audio-help strong {
+  color: var(--text);
+}
+
 .choices {
   display: flex;
   flex-direction: column;
