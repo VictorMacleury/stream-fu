@@ -25,6 +25,8 @@ const roomCodeEl = document.getElementById("roomCode");
 const hostStatusEl = document.getElementById("hostStatus");
 const hostPreviewEl = document.getElementById("hostPreview");
 const viewerCountEl = document.getElementById("viewerCount");
+const btnChangeSource = document.getElementById("btnChangeSource");
+const startPriority = document.getElementById("startPriority");
 
 const codeInputEl = document.getElementById("codeInput");
 const viewerStatusEl = document.getElementById("viewerStatus");
@@ -101,20 +103,30 @@ function copyText(text, btn) {
 // ==========================================================================
 // HOST — captura a tela e transmite
 // ==========================================================================
+
+// Pede a captura de tela com os mesmos parâmetros ao iniciar e ao trocar a fonte.
+function captureScreen() {
+  return navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: { ideal: 60, max: 60 } },
+    // Desliga processamentos de voz para não degradar música/áudio do sistema.
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false
+    }
+  });
+}
+
 async function startHosting() {
+  // A prioridade escolhida no card vale desde o início.
+  currentPriority = startPriority.value;
+  prioritySelect.value = startPriority.value;
+
   showView("host");
   hostStatusEl.textContent = "Pedindo permissão para capturar a tela…";
 
   try {
-    localStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { ideal: 60, max: 60 } },
-      // Desliga processamentos de voz para não degradar música/áudio do sistema.
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
-      }
-    });
+    localStream = await captureScreen();
   } catch (err) {
     hostStatusEl.textContent =
       "❌ Captura cancelada ou não permitida pelo navegador.";
@@ -122,17 +134,59 @@ async function startHosting() {
   }
 
   hostPreviewEl.srcObject = localStream;
-
-  const videoTrack = localStream.getVideoTracks()[0];
-  // O contentHint segue a prioridade escolhida (fluidez, equilíbrio ou nitidez).
-  if ("contentHint" in videoTrack) {
-    videoTrack.contentHint = PRIORITY_SETTINGS[currentPriority].contentHint;
-  }
-
-  // Se o usuário parar de compartilhar pela barra do navegador, encerra tudo.
-  videoTrack.addEventListener("ended", stopHosting);
+  prepareVideoTrack(localStream.getVideoTracks()[0]);
 
   createHostPeer(generateCode());
+}
+
+// Aplica o contentHint da prioridade e encerra tudo se a captura terminar.
+function prepareVideoTrack(track) {
+  if ("contentHint" in track) {
+    track.contentHint = PRIORITY_SETTINGS[currentPriority].contentHint;
+  }
+  track.addEventListener("ended", stopHosting);
+}
+
+// Troca a tela/janela transmitida sem derrubar a sala nem gerar novo código.
+async function changeSource() {
+  let newStream;
+  try {
+    newStream = await captureScreen();
+  } catch (err) {
+    return; // usuário cancelou a troca
+  }
+
+  const newVideoTrack = newStream.getVideoTracks()[0];
+  const newAudioTrack = newStream.getAudioTracks()[0] || null;
+  if ("contentHint" in newVideoTrack) {
+    newVideoTrack.contentHint = PRIORITY_SETTINGS[currentPriority].contentHint;
+  }
+
+  // Substitui as faixas em cada espectador conectado (sem renegociar).
+  viewerCalls.forEach((call) => {
+    const pc = call.peerConnection;
+    if (!pc) return;
+    const videoSender = pc
+      .getSenders()
+      .find((s) => s.track && s.track.kind === "video");
+    if (videoSender) videoSender.replaceTrack(newVideoTrack).catch(() => {});
+    const audioSender = pc
+      .getSenders()
+      .find((s) => s.track && s.track.kind === "audio");
+    if (audioSender && newAudioTrack) {
+      audioSender.replaceTrack(newAudioTrack).catch(() => {});
+    }
+  });
+
+  // Adota o novo stream e encerra o anterior.
+  const oldStream = localStream;
+  localStream = newStream;
+  hostPreviewEl.srcObject = localStream;
+  if (oldStream) oldStream.getTracks().forEach((t) => t.stop());
+
+  newVideoTrack.addEventListener("ended", stopHosting);
+  hostStatusEl.textContent =
+    "✅ Fonte trocada! Continua no ar com o mesmo código.";
 }
 
 function createHostPeer(code) {
@@ -363,6 +417,7 @@ document.getElementById("btnGoHost").addEventListener("click", startHosting);
 document.getElementById("btnGoViewer").addEventListener("click", () => startViewing());
 document.getElementById("btnStopHost").addEventListener("click", stopHosting);
 document.getElementById("btnBackHome1").addEventListener("click", stopHosting);
+btnChangeSource.addEventListener("click", changeSource);
 document.getElementById("btnConnect").addEventListener("click", connectToHost);
 document.getElementById("btnBackHome2").addEventListener("click", leaveViewer);
 

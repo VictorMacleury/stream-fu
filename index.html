@@ -14,11 +14,24 @@
 
   <main>
     <!-- HOME -->
-    <section id="home" class="card">
-      <h2>O que você quer fazer?</h2>
-      <div class="choices">
-        <button id="btnGoHost" class="primary big">🔴 Transmitir minha tela</button>
-        <button id="btnGoViewer" class="secondary big">👀 Assistir a uma transmissão</button>
+    <section id="home" class="home-grid">
+      <div class="card choice-card">
+        <h2>🔴 Transmitir</h2>
+        <p>Compartilhe sua tela ao vivo com seus amigos.</p>
+        <label class="priority" for="startPriority">
+          Prioridade da transmissão:
+          <select id="startPriority">
+            <option value="framerate">Fluidez (60fps)</option>
+            <option value="balanced">Equilíbrio</option>
+            <option value="resolution">Nitidez</option>
+          </select>
+        </label>
+        <button id="btnGoHost" class="primary big">Transmitir minha tela</button>
+      </div>
+      <div class="card choice-card">
+        <h2>👀 Assistir</h2>
+        <p>Entre com o código de um amigo para ver a transmissão ao vivo.</p>
+        <button id="btnGoViewer" class="secondary big">Assistir a uma transmissão</button>
       </div>
     </section>
 
@@ -45,6 +58,7 @@
         </label>
       </div>
       <div class="actions">
+        <button id="btnChangeSource" class="secondary">🔄 Trocar fonte</button>
         <button id="btnStopHost" class="danger">⏹ Parar transmissão</button>
         <button id="btnBackHome1" class="ghost">Voltar</button>
       </div>

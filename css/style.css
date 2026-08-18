@@ -117,6 +117,37 @@ button:active {
   font-size: 1.05rem;
 }
 
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.choice-card p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.choice-card .priority {
+  margin: 0;
+}
+
+.choice-card .big {
+  margin-top: auto;
+}
+
+@media (max-width: 640px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .choices {
   display: flex;
   flex-direction: column;
