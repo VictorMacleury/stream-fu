@@ -4,12 +4,20 @@
 // Os espectadores apenas recebem: nunca enviam áudio, vídeo ou dados.
 // ==========================================================================
 
-// Servidores STUN ajudam os navegadores a se encontrarem através de roteadores.
+// STUN ajuda os navegadores a se acharem; TURN faz relay quando a rede é fechada.
 const PEER_CONFIG = {
   config: {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" }
+      { urls: "stun:stun1.l.google.com:19302" },
+      {
+        urls: [
+          "turn:eu-0.turn.peerjs.com:3478",
+          "turn:us-0.turn.peerjs.com:3478"
+        ],
+        username: "peerjs",
+        credential: "peerjsp"
+      }
     ]
   }
 };
