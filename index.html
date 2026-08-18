@@ -26,6 +26,14 @@
             <option value="resolution">Nitidez</option>
           </select>
         </label>
+        <label class="priority" for="audioSource">
+          Áudio:
+          <select id="audioSource">
+            <option value="screen">Da tela (tudo, inclui Discord)</option>
+            <option value="none">Sem áudio</option>
+          </select>
+        </label>
+        <button id="btnDetectAudio" type="button" class="ghost small">🎚 Detectar dispositivos de áudio</button>
         <button id="btnGoHost" class="primary big">Transmitir minha tela</button>
       </div>
       <div class="card choice-card">
@@ -58,7 +66,7 @@
         </label>
       </div>
       <div class="actions">
-        <button id="btnChangeSource" class="secondary">🔄 Trocar fonte</button>
+        <button id="btnChangeSource" class="secondary">🔄 Trocar tela/janela</button>
         <button id="btnStopHost" class="danger">⏹ Parar transmissão</button>
         <button id="btnBackHome1" class="ghost">Voltar</button>
       </div>

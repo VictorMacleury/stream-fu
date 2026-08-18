@@ -27,6 +27,8 @@ const hostPreviewEl = document.getElementById("hostPreview");
 const viewerCountEl = document.getElementById("viewerCount");
 const btnChangeSource = document.getElementById("btnChangeSource");
 const startPriority = document.getElementById("startPriority");
+const audioSource = document.getElementById("audioSource");
+const btnDetectAudio = document.getElementById("btnDetectAudio");
 
 const codeInputEl = document.getElementById("codeInput");
 const viewerStatusEl = document.getElementById("viewerStatus");
@@ -104,17 +106,56 @@ function copyText(text, btn) {
 // HOST — captura a tela e transmite
 // ==========================================================================
 
-// Pede a captura de tela com os mesmos parâmetros ao iniciar e ao trocar a fonte.
-function captureScreen() {
-  return navigator.mediaDevices.getDisplayMedia({
+// Restrições de áudio: sem processamentos de voz para não estragar música/jogo.
+const AUDIO_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false
+};
+
+// Captura a tela; o áudio depende da fonte escolhida (tela, dispositivo ou nenhum).
+async function captureScreen() {
+  const source = audioSource.value;
+  const stream = await navigator.mediaDevices.getDisplayMedia({
     video: { frameRate: { ideal: 60, max: 60 } },
-    // Desliga processamentos de voz para não degradar música/áudio do sistema.
-    audio: {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false
-    }
+    audio: source === "screen" ? AUDIO_CONSTRAINTS : false
   });
+
+  if (source !== "screen" && source !== "none") {
+    // Áudio de um dispositivo específico (ex.: cabo virtual só com o jogo, sem Discord).
+    try {
+      const mic = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: source }, ...AUDIO_CONSTRAINTS }
+      });
+      stream.addTrack(mic.getAudioTracks()[0]);
+    } catch (err) {
+      hostStatusEl.textContent =
+        "⚠️ Não consegui usar o dispositivo de áudio escolhido; seguindo sem áudio.";
+    }
+  }
+  return stream;
+}
+
+// Pede permissão e lista os dispositivos de entrada de áudio no seletor.
+async function detectAudioDevices() {
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+    tmp.getTracks().forEach((t) => t.stop());
+  } catch (err) {
+    return;
+  }
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  [...audioSource.options].forEach((o) => {
+    if (o.value !== "screen" && o.value !== "none") o.remove();
+  });
+  devices
+    .filter((d) => d.kind === "audioinput")
+    .forEach((d) => {
+      const opt = document.createElement("option");
+      opt.value = d.deviceId;
+      opt.textContent = d.label || "Dispositivo de áudio";
+      audioSource.appendChild(opt);
+    });
 }
 
 async function startHosting() {
@@ -418,6 +459,7 @@ document.getElementById("btnGoViewer").addEventListener("click", () => startView
 document.getElementById("btnStopHost").addEventListener("click", stopHosting);
 document.getElementById("btnBackHome1").addEventListener("click", stopHosting);
 btnChangeSource.addEventListener("click", changeSource);
+btnDetectAudio.addEventListener("click", detectAudioDevices);
 document.getElementById("btnConnect").addEventListener("click", connectToHost);
 document.getElementById("btnBackHome2").addEventListener("click", leaveViewer);
 
