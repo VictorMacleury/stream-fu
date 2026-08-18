@@ -4,31 +4,25 @@
 // Os espectadores apenas recebem: nunca enviam áudio, vídeo ou dados.
 // ==========================================================================
 
-// STUN ajuda os navegadores a se acharem; TURN faz relay quando a rede é fechada.
-// Open Relay funciona inclusive por TCP/443, atravessando a maioria dos firewalls.
+// STUN acha o IP público; TURN faz o relay quando a rede bloqueia P2P (ex.: cabo).
+// ⚠️ Os TURN públicos gratuitos saíram do ar. Para funcionar em redes restritas,
+// preencha TURN_SERVERS com credenciais de um TURN próprio (ex.: conta grátis metered.ca).
+const TURN_SERVERS = [
+  // {
+  //   urls: [
+  //     "turn:global.relay.metered.ca:80",
+  //     "turn:global.relay.metered.ca:443",
+  //     "turns:global.relay.metered.ca:443?transport=tcp"
+  //   ],
+  //   username: "SEU_USERNAME_DO_METERED",
+  //   credential: "SUA_CREDENCIAL_DO_METERED"
+  // }
+];
+
 const PEER_CONFIG = {
   debug: 2,
   config: {
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      {
-        urls: [
-          "turn:openrelay.metered.ca:80",
-          "turn:openrelay.metered.ca:443",
-          "turn:openrelay.metered.ca:443?transport=tcp"
-        ],
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: [
-          "turn:eu-0.turn.peerjs.com:3478",
-          "turn:us-0.turn.peerjs.com:3478"
-        ],
-        username: "peerjs",
-        credential: "peerjsp"
-      }
-    ]
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }, ...TURN_SERVERS]
   }
 };
 
@@ -124,6 +118,19 @@ async function logSelectedPair(pc, role) {
   } catch (e) {
     log(role, "getStats erro:", e.message);
   }
+}
+
+// Aguarda o peerConnection de uma conexão (dados ou mídia) e o instrumenta.
+function instrumentConnection(conn, role) {
+  const setup = () => {
+    const pc = conn.peerConnection;
+    if (!pc) {
+      setTimeout(setup, 300);
+      return;
+    }
+    instrumentPeerConnection(pc, role);
+  };
+  setup();
 }
 
 // Cada modo define como o codificador reage quando falta banda.
@@ -288,6 +295,7 @@ function createHostPeer(code) {
   // Cada espectador se anuncia por uma conexão de dados; então nós o chamamos.
   hostPeer.on("connection", (conn) => {
     log("HOST", "espectador anunciou presença (data):", conn.peer);
+    instrumentConnection(conn, "HOST-data");
     conn.on("open", () => callViewer(conn.peer));
     conn.on("close", () => {
       viewerCalls.delete(conn.peer);
@@ -427,10 +435,14 @@ function connectToHost() {
     log("VIEWER", "peer aberto, meu id:", id);
     // Anuncia presença ao host para que ele nos envie o vídeo.
     const conn = viewerPeer.connect(code);
+    instrumentConnection(conn, "VIEWER-data");
     conn.on("open", () => {
       viewerStatusEl.textContent = "Conectado! Aguardando o vídeo…";
       log("VIEWER", "presença anunciada ao host");
     });
+    conn.on("error", (err) =>
+      log("VIEWER", "erro na conexão de dados:", err.type || String(err))
+    );
   });
 
   // O host nos liga com o vídeo da tela.
